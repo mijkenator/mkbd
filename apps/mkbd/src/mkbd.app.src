@@ -1,0 +1,15 @@
+{application, mkbd,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  lager,
+                  cowboy,
+                  gun
+                 ]},
+  {mod, { mkbd_app, []}},
+  {env, []}
+ ]}.

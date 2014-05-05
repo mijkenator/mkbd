@@ -1,0 +1,27 @@
+<html>
+  <head>
+    <title>MKBD</title>
+    <script src="jquery/jquery-1.10.2.min.js"></script>
+    <script src="js/main.js"></script>
+  </head>
+<body>
+
+<h3 id="mkh_pair_title">PAIR!</h3>
+
+<div id="mkh_m_div">
+    <div> <span>Master guid: </span><span id="mkh_master_guid"></span></div>
+    <div> <span>OR</span></div>
+    <div> 
+        <span>Enter master guid: </span>
+        <span><input type="text" id="mkh_pair_master_guid"> <input type="button" value="PAIR" id="mkh_pair_button"></span>
+    </div>
+    <div id="mkh_master_panel" style="display:none">
+        <span>Command:: </span>
+        <span><input type="text" id="mkh_master_command"> <input type="button" value="Send" id="mkh_send_command_button"></span>
+    </div>
+</div>
+    <div id="mkh_slave_panel" style="display:none">
+        <iframe id="mkh_slv_ifr" style="width:100%;height:100%"></iframe>
+    </div>
+</body>
+</html>

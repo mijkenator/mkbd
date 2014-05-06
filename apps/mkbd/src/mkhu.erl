@@ -13,7 +13,11 @@
     to_bin/1,
     parse_uri/1,
     get_url/1,
-    ht/0
+    ht/0,
+    html_p/3,
+    get_base/1,
+    get_base_p/1,
+    t/0
 ]).
 
 -spec to_binary(any()) -> binary().
@@ -159,3 +163,58 @@ ht() ->
             R
         ;_-> nok1
     end.
+
+html_p([], A, _) -> A;
+html_p([{<<"head">>,HO,HB}|T], A, Url) -> html_p(T, [process_head(HO, HB, Url)] ++ A, Url);
+html_p([{<<"body">>,BO,BB}|T], A, Url) -> html_p(T, A ++ [process_body(BO, BB, Url)], Url);
+html_p([H|T], A, Url) -> html_p(T, A ++ [H], Url).
+
+process_head(HO, HB, Url) -> {<<"head">>, HO, src_repl(HB, Url)}.
+process_body(BO, BB, Url) -> {<<"body">>, BO, src_repl(BB, Url)}.
+
+src_repl(B, Url) -> src_repl(B, [], Url).
+
+src_repl([], A, _) -> A;
+src_repl([{Tag, Attrs, Chldrs}|T], A, Url) -> src_repl(T, A ++ [{Tag, attr_proc(Attrs, [], Url), src_repl(Chldrs, Url)}], Url);
+src_repl([H|T], A, Url) -> src_repl(T, A ++ [H], Url).
+
+attr_proc([], A, _) -> A;
+attr_proc([{AN, H}|T], A, Url) when 
+    AN =:= <<"href">>;
+    AN =:= <<"src">> -> attr_proc(T, A ++ [{AN, fix_dst(H, Url)}], Url);
+attr_proc([H|T], A, Url) -> attr_proc(T, A ++[H], Url).
+
+fix_dst(<<"http://", _/binary>>  = H, _) -> H;
+fix_dst(<<"https://", _/binary>> = H, _) -> H;
+%fix_dst(<<"//", RH/binary>>, Url) -> B = get_base(Url), <<B/binary, "/", RH/binary>>;
+fix_dst(<<"//", _/binary>> = H, _) -> H;
+fix_dst(<<"/",  RH/binary>>, Url) -> B = get_base(Url), <<B/binary, "/", RH/binary>>;
+fix_dst(H, Url) -> B = get_base_p(Url), <<B/binary, H/binary>>.
+
+get_base(U) when is_list(U) ->
+    case http_uri:parse(U) of
+        {ok, {P,_,H,_,_,_}} -> <<(to_type(P, binary))/binary, "://", (to_type(H, binary))/binary>>;
+        {error, no_scheme}  -> get_base("http://" ++ U)
+        ;_ -> <<"">>
+    end;
+get_base(U) -> get_base(to_type(U, list)).
+
+get_base_p(U) when is_list(U) ->
+    case http_uri:parse(U) of
+        {ok, {P,_,H,_,Pa,_}} -> 
+            <<(to_type(P, binary))/binary, "://", (to_type(H, binary))/binary, (get_path(Pa))/binary>>;
+        {error, no_scheme}  -> get_base_p("http://" ++ U)
+        ;_ -> <<"">>
+    end;
+get_base_p(U) -> get_base_p(to_type(U, list)).
+
+get_path(P) when is_list(P)   -> get_path(to_bin(P));
+get_path(P) when is_binary(P) ->
+    case re:run(P, "^(.+\/)[^/]+\\.[^/]+$") of
+        {match, [_,{_,L}]} -> <<Pa:L/binary,_/binary>> = P, Pa
+        ;_ -> P
+    end.
+
+t() ->
+    R = mochiweb_html:to_html({<<"html">>, [], mkhu:html_p(mkhu:ht(),[],"http://www.erlang.org/")}),
+    file:write_file("../../erl1.html", R).

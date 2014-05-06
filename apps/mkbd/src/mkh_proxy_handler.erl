@@ -25,7 +25,7 @@ get_proxer(undefined, Req) ->
     cowboy_req:reply(400, [], <<"Missing echo parameter.">>, Req);
 get_proxer(To, Req) ->
     lager:debug("GP1: To: ~p", [To]),
-    {ok,{_,_,Ret}} =mkhu:get_url(To),
+    %{ok,{_,_,Ret}} =mkhu:get_url(To),
 
     {Ret, Req2} = case mkhu:get_url(To) of
         {ok,{200, H, R}} -> 
@@ -52,9 +52,24 @@ get_proxer(To, Req) ->
             end
     end,
 
+    lager:debug("GP: raw html: ~p", [size(Ret)]),
+
+    R1 = case mochiweb_html:parse(Ret) of
+        {<<"html">>, _B, Re} -> 
+            lager:debug("GP parse 1", []),
+            NRet = mkhu:html_p(Re, [], To),
+            lager:debug("GP parse 2", []),
+            ToHtml = {<<"html">>, [], NRet},
+            lager:debug("GP parse 3", []),
+            mkhu:to_bin(mochiweb_html:to_html(ToHtml))
+        ;_-> Ret
+    end,
+    
+    lager:debug("GP: new raw html: ~p", [size(R1)]),
+    
     cowboy_req:reply(200, [
         {<<"content-type">>, <<"text/html; charset=utf-8">>}
-    ], mkhu:to_bin(Ret), Req2).
+    ], mkhu:to_bin(R1), Req2).
 
 
 post_proxer(true, Req) ->
